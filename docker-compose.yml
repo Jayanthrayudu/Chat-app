@@ -1,0 +1,24 @@
+version: "3.9"
+
+services:
+  backend:
+    build: ./chat-app
+    container_name: chat-backend
+    ports:
+      - "8080:8080"
+    environment:
+      DB_URL: ${DB_URL}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+    restart: unless-stopped
+
+  frontend:
+    build: ./chatapp-frontend
+    container_name: chat-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
