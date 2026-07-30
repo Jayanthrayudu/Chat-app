@@ -35,7 +35,7 @@ export default function RegisterForm() {
         setError("Can't reach the server. Is the backend running on port 8080?");
       } else {
         setError(
-          "Registration failed. Note: this endpoint's request shape is an assumption - confirm it matches your backend's /api/auth/register controller."
+          "Password must contain 6 letters"
         );
       }
     } finally {
