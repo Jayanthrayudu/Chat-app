@@ -2,6 +2,7 @@ package com.chat_app.config;
 
 import com.chat_app.security.WebSocketAuthInterceptor;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 
 import org.springframework.messaging.simp.config.ChannelRegistration;
@@ -18,6 +19,9 @@ public class WebSocketConfig
 
     private final WebSocketAuthInterceptor
             webSocketAuthInterceptor;
+
+    @Value("${app.cors.allowed-origins}")
+    private String allowedOrigins;
 
     public WebSocketConfig(
             WebSocketAuthInterceptor
@@ -50,7 +54,7 @@ public class WebSocketConfig
 
         registry.addEndpoint("/ws")
                 .setAllowedOrigins(
-                        "http://localhost:5173"
+                        allowedOrigins.split(",")
                 )
                 .withSockJS();
     }
