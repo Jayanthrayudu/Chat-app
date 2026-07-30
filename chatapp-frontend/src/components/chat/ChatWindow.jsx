@@ -4,7 +4,7 @@ import ChatHeader from "./ChatHeader";
 import MessageList from "./MessageList";
 import MessageInput from "./MessageInput";
 
-export default function ChatWindow({ onBack }) {
+export default function ChatWindow({ onBack, onOpenInfo }) {
   const { activeRoom } = useChat();
 
   if (!activeRoom) {
@@ -23,7 +23,7 @@ export default function ChatWindow({ onBack }) {
 
   return (
     <div className="flex h-full flex-1 flex-col bg-ink-950">
-      <ChatHeader onBack={onBack} />
+      <ChatHeader onBack={onBack} onOpenInfo={onOpenInfo} />
       <MessageList />
       <MessageInput />
     </div>

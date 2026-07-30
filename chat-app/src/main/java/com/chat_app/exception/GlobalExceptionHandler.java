@@ -1,49 +1,57 @@
-//package com.chat_app.exception;
-//
-//import com.chat_app.dto.response.ApiResponse;
-//import org.springframework.http.HttpStatus;
-//import org.springframework.http.ResponseEntity;
-//import org.springframework.web.bind.MethodArgumentNotValidException;
-//import org.springframework.web.bind.annotation.ExceptionHandler;
-//import org.springframework.web.bind.annotation.RestControllerAdvice;
-//
-//import java.util.HashMap;
-//import java.util.Map;
-//
-//@RestControllerAdvice
-//public class GlobalExceptionHandler {
-//
-//    @ExceptionHandler(ResourceNotFoundException.class)
-//    public ResponseEntity<ApiResponse> handleResourceNotFound(ResourceNotFoundException ex) {
-//        return new ResponseEntity<>(
-//                new ApiResponse(ex.getMessage(), false),
-//                HttpStatus.NOT_FOUND
-//        );
-//    }
-//
-//    @ExceptionHandler(UnauthorizedException.class)
-//    public ResponseEntity<ApiResponse> handleUnauthorized(UnauthorizedException ex) {
-//        return new ResponseEntity<>(
-//                new ApiResponse(ex.getMessage(), false),
-//                HttpStatus.UNAUTHORIZED
-//        );
-//    }
-//
-//    @ExceptionHandler(MethodArgumentNotValidException.class)
-//    public ResponseEntity<Object> handleValidationExceptions(MethodArgumentNotValidException ex) {
-//        Map<String, String> errors = new HashMap<>();
-//        ex.getBindingResult().getFieldErrors().forEach(error ->
-//                errors.put(error.getField(), error.getDefaultMessage())
-//        );
-//
-//        return new ResponseEntity<>(errors, HttpStatus.BAD_REQUEST);
-//    }
-//
-//    @ExceptionHandler(Exception.class)
-//    public ResponseEntity<ApiResponse> handleGlobalException(Exception ex) {
-//        return new ResponseEntity<>(
-//                new ApiResponse("An unexpected error occurred: " + ex.getMessage(), false),
-//                HttpStatus.INTERNAL_SERVER_ERROR
-//        );
-//    }
-//}
+package com.chat_app.exception;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import java.util.HashMap;
+import java.util.Map;
+
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<Map<String, Object>> handleRuntimeException(
+            RuntimeException ex
+    ) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("message", ex.getMessage());
+
+        HttpStatus status = resolveStatus(ex.getMessage());
+        body.put("status", status.value());
+
+        return ResponseEntity.status(status).body(body);
+    }
+
+    /*
+     * Maps known error message patterns to a more specific HTTP status.
+     * Anything unrecognized falls back to 400 Bad Request, which is still
+     * far more useful to the frontend than the previous default 500.
+     */
+    private HttpStatus resolveStatus(String message) {
+        if (message == null) {
+            return HttpStatus.BAD_REQUEST;
+        }
+
+        String lower = message.toLowerCase();
+
+        if (lower.contains("already taken") || lower.contains("already registered")) {
+            return HttpStatus.CONFLICT; // 409
+        }
+
+        if (lower.contains("invalid credentials")) {
+            return HttpStatus.UNAUTHORIZED; // 401
+        }
+
+        if (lower.contains("not found")) {
+            return HttpStatus.NOT_FOUND; // 404
+        }
+
+        if (lower.contains("only") || lower.contains("cannot")) {
+            return HttpStatus.FORBIDDEN; // 403 — permission-style messages
+        }
+
+        return HttpStatus.BAD_REQUEST; // 400 — sensible default
+    }
+}

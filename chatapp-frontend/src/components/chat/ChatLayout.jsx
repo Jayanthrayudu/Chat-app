@@ -8,16 +8,17 @@ import { ChatProvider } from "../../context/ChatContext";
 
 export default function ChatLayout() {
   const { activeRoomId, clearActiveRoom } = useChat();
-  // On small screens we show either the list or the active conversation,
-  // never both - this local flag drives that.
   const [mobileView, setMobileView] = useState("list");
+  const [showRoomInfo, setShowRoomInfo] = useState(false);
 
   function handleSelectRoom() {
     setMobileView("chat");
+    setShowRoomInfo(false);
   }
 
   function handleBack() {
     setMobileView("list");
+    setShowRoomInfo(false);
     clearActiveRoom();
   }
 
@@ -38,10 +39,10 @@ export default function ChatLayout() {
             mobileView === "list" && !activeRoomId ? "hidden" : "block"
           }`}
         >
-          <ChatWindow onBack={handleBack} />
+          <ChatWindow onBack={handleBack} onOpenInfo={() => setShowRoomInfo(true)} />
         </main>
 
-        <Sidebar />
+        <Sidebar isOpenMobile={showRoomInfo} onCloseMobile={() => setShowRoomInfo(false)} />
       </div>
     </div>
   );

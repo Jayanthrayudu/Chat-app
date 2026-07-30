@@ -1,4 +1,4 @@
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Info } from "lucide-react";
 import { useChat } from "../../hooks/useChat";
 import { useAuth } from "../../hooks/useAuth";
 import {
@@ -7,9 +7,7 @@ import {
   getRoomDisplayInitial,
 } from "../../utils/privateChatUtils";
 
-export default function ChatHeader({
-  onBack,
-}) {
+export default function ChatHeader({ onBack, onOpenInfo }) {
   const { activeRoom } = useChat();
   const { user } = useAuth();
 
@@ -17,32 +15,13 @@ export default function ChatHeader({
     return null;
   }
 
+  const otherParticipant = getOtherParticipant(activeRoom, user);
+  const displayName = getRoomDisplayName(activeRoom, user);
+  const initial = getRoomDisplayInitial(activeRoom, user);
 
-  const otherParticipant =
-    getOtherParticipant(
-      activeRoom,
-      user
-    );
-
-  const displayName =
-    getRoomDisplayName(
-      activeRoom,
-      user
-    );
-
-  const initial =
-    getRoomDisplayInitial(
-      activeRoom,
-      user
-    );
-
-  const onlineCount = (
-    activeRoom.participants || []
-  ).filter(
-    (participant) =>
-      participant.online
+  const onlineCount = (activeRoom.participants || []).filter(
+    (participant) => participant.online
   ).length;
-
 
   return (
     <div className="flex h-16 shrink-0 items-center gap-3 border-b border-ink-800 bg-ink-900 px-4">
@@ -57,20 +36,13 @@ export default function ChatHeader({
 
       <div
         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white"
-        style={{
-          backgroundColor:
-            activeRoom.avatarColor ||
-            "#3E63DD",
-        }}
+        style={{ backgroundColor: activeRoom.avatarColor || "#3E63DD" }}
       >
         {initial}
       </div>
 
-      <div className="min-w-0">
-        <p className="truncate text-sm font-semibold text-mist-50">
-          {displayName}
-        </p>
-
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-semibold text-mist-50">{displayName}</p>
         <p className="truncate text-xs text-mist-300">
           {activeRoom.isGroup
             ? `${activeRoom.participants?.length || 0} members · ${onlineCount} online`
@@ -78,7 +50,16 @@ export default function ChatHeader({
             ? "Online"
             : "Offline"}
         </p>
-      </div>  
+      </div>
+
+      <button
+        type="button"
+        onClick={onOpenInfo}
+        aria-label="Room info"
+        className="rounded-lg p-1.5 text-mist-200 hover:bg-ink-800 lg:hidden"
+      >
+        <Info size={19} />
+      </button>
     </div>
   );
 }
