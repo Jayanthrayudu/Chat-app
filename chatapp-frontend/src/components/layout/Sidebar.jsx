@@ -85,8 +85,8 @@ export default function Sidebar({ isOpenMobile = false, onCloseMobile }) {
 
       <aside
         className={`
-          ${isOpenMobile ? "fixed inset-y-0 right-0 z-40 flex w-72 flex-col" : "hidden"}
-          overflow-y-auto border-l border-ink-800 bg-ink-900 p-4 scroll-thin
+          ${isOpenMobile ? "fixed inset-y-0 right-0 z-40 flex w-72" : "hidden"}
+          flex-col overflow-y-auto border-l border-ink-800 bg-ink-900 p-4 scroll-thin
           lg:static lg:z-auto lg:flex lg:w-72 lg:shrink-0
         `}
       >
