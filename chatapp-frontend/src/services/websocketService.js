@@ -14,6 +14,8 @@ let client = null;
 let currentRoomSubscription = null;
 let currentRoomId = null;
 let pendingSubscribeCallback = null;
+let notificationSubscription = null;
+let pendingNotificationCallback = null;
 let statusListeners = new Set();
 let hasConnectedBefore = false;
 
@@ -60,6 +62,12 @@ export function connect(token) {
       if (currentRoomId && pendingSubscribeCallback) {
         subscribeInternal(currentRoomId, pendingSubscribeCallback);
       }
+
+      // Re-establish the personal notification subscription on every
+      // (re)connect, since STOMP subscriptions do not survive a reconnect.
+      if (pendingNotificationCallback) {
+        subscribeToNotifications(pendingNotificationCallback);
+      }
     },
 
     onDisconnect: () => {
@@ -97,8 +105,19 @@ export function disconnect() {
     }
     currentRoomSubscription = null;
   }
+
+  if (notificationSubscription) {
+    try {
+      notificationSubscription.unsubscribe();
+    } catch {
+      /* connection may already be closed */
+    }
+    notificationSubscription = null;
+  }
+
   currentRoomId = null;
   pendingSubscribeCallback = null;
+  pendingNotificationCallback = null;
   hasConnectedBefore = false;
 
   if (client) {
@@ -157,6 +176,46 @@ export function unsubscribeFromRoom() {
   }
   currentRoomId = null;
   pendingSubscribeCallback = null;
+}
+
+/**
+ * Subscribes to the current user's personal notification queue. This is
+ * independent of whatever room is currently open, so it stays active for
+ * the whole session - used to update conversation previews/unread counts
+ * and show toasts for messages in rooms the user isn't currently viewing.
+ */
+export function subscribeToNotifications(onNotification) {
+  if (!client || !client.connected) return;
+
+  if (notificationSubscription) {
+    try {
+      notificationSubscription.unsubscribe();
+    } catch {
+      /* noop */
+    }
+  }
+
+  notificationSubscription = client.subscribe("/user/queue/notifications", (message) => {
+    try {
+      const parsed = JSON.parse(message.body);
+      onNotification(parsed);
+    } catch (err) {
+      console.error("Failed to parse notification:", err);
+    }
+  });
+}
+
+/**
+ * Registers the notification handler. Safe to call before the WebSocket
+ * connects - the subscription is deferred to onConnect() via
+ * pendingNotificationCallback.
+ */
+export function setNotificationHandler(onNotification) {
+  pendingNotificationCallback = onNotification;
+
+  if (client && client.connected) {
+    subscribeToNotifications(onNotification);
+  }
 }
 
 /**

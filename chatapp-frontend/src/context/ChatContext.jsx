@@ -34,6 +34,11 @@ export function ChatProvider({ children }) {
   // =========================
 
   const [activeRoomId, setActiveRoomId] = useState(null);
+  const activeRoomIdRef = useRef(null);
+
+  useEffect(() => {
+    activeRoomIdRef.current = activeRoomId;
+  }, [activeRoomId]);
 
   // =========================
   // MESSAGES
@@ -51,6 +56,16 @@ export function ChatProvider({ children }) {
   const [messagePage, setMessagePage] = useState(0);
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
+
+  // =========================
+  // NOTIFICATION TOASTS
+  // =========================
+
+  const [toasts, setToasts] = useState([]);
+
+  function dismissToast(id) {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }
 
   // =========================
   // DUPLICATE MESSAGE TRACKING
@@ -109,7 +124,7 @@ export function ChatProvider({ children }) {
   );
 
   // =========================
-  // INCOMING WEBSOCKET MESSAGE
+  // INCOMING WEBSOCKET MESSAGE (active room only)
   // =========================
 
   const handleIncomingMessage = useCallback(
@@ -119,38 +134,94 @@ export function ChatProvider({ children }) {
       }
 
       setMessages((previousMessages) => {
-        if (
-          seenMessageIds.current.has(incomingMessage.id)
-        ) {
+        if (seenMessageIds.current.has(incomingMessage.id)) {
           return previousMessages;
         }
 
-        seenMessageIds.current.add(
-          incomingMessage.id
-        );
+        seenMessageIds.current.add(incomingMessage.id);
 
-        return [
-          ...previousMessages,
-          incomingMessage,
-        ];
+        return [...previousMessages, incomingMessage];
       });
 
-      // Update the room preview in the conversation list.
-      setRooms((previousRooms) =>
-        previousRooms.map((room) =>
+      // Update the room preview and bump it to the top of the list.
+      setRooms((previousRooms) => {
+        const updated = previousRooms.map((room) =>
           room.id === incomingMessage.chatRoomId
             ? {
                 ...room,
                 lastMessage: incomingMessage,
-                lastMessageAt:
-                  incomingMessage.createdAt,
+                lastMessageAt: incomingMessage.createdAt,
               }
             : room
-        )
-      );
+        );
+
+        const movedRoom = updated.find(
+          (room) => room.id === incomingMessage.chatRoomId
+        );
+        if (!movedRoom) return updated;
+
+        const rest = updated.filter(
+          (room) => room.id !== incomingMessage.chatRoomId
+        );
+        return [movedRoom, ...rest];
+      });
     },
     []
   );
+
+  // =========================
+  // PERSONAL NOTIFICATION (any room, including inactive ones)
+  // =========================
+
+  const handleNotification = useCallback((notification) => {
+    if (!notification?.id) return;
+
+    const isActiveRoom = notification.chatRoomId === activeRoomIdRef.current;
+
+    setRooms((previousRooms) => {
+      const updated = previousRooms.map((room) =>
+        room.id === notification.chatRoomId
+          ? {
+              ...room,
+              lastMessage: notification,
+              lastMessageAt: notification.createdAt,
+              unreadCount: isActiveRoom ? 0 : (room.unreadCount || 0) + 1,
+            }
+          : room
+      );
+
+      const movedRoom = updated.find(
+        (room) => room.id === notification.chatRoomId
+      );
+      if (!movedRoom) return updated;
+
+      const rest = updated.filter(
+        (room) => room.id !== notification.chatRoomId
+      );
+      return [movedRoom, ...rest];
+    });
+
+    if (!isActiveRoom) {
+      const toastId = `${notification.id}-${Date.now()}`;
+
+      setToasts((prev) => [
+        ...prev,
+        {
+          id: toastId,
+          senderUsername: notification.senderUsername,
+          content: notification.content,
+        },
+      ]);
+
+      setTimeout(() => {
+        setToasts((prev) => prev.filter((t) => t.id !== toastId));
+      }, 4000);
+    }
+  }, []);
+
+  useEffect(() => {
+    ws.setNotificationHandler(handleNotification);
+  }, [handleNotification]);
 
   // =========================
   // SELECT ROOM
@@ -167,6 +238,13 @@ export function ChatProvider({ children }) {
       }
 
       setActiveRoomId(roomId);
+
+      // Opening a room clears its unread count.
+      setRooms((previousRooms) =>
+        previousRooms.map((room) =>
+          room.id === roomId ? { ...room, unreadCount: 0 } : room
+        )
+      );
 
       setMessages([]);
 
@@ -357,6 +435,8 @@ export function ChatProvider({ children }) {
       setMessagePage(0);
 
       setHasMoreMessages(true);
+
+      setToasts([]);
 
       seenMessageIds.current = new Set();
 
@@ -571,56 +651,55 @@ export function ChatProvider({ children }) {
   );
 
   const addMembers = useCallback(
-  async (roomId, userIds) => {
-    const updatedRoom = await chatRoomsService.addParticipants(roomId, userIds);
+    async (roomId, userIds) => {
+      const updatedRoom = await chatRoomsService.addParticipants(roomId, userIds);
 
-    setRooms((previousRooms) =>
-      previousRooms.map((room) =>
-        room.id === roomId ? { ...room, ...updatedRoom } : room
-      )
-    );
+      setRooms((previousRooms) =>
+        previousRooms.map((room) =>
+          room.id === roomId ? { ...room, ...updatedRoom } : room
+        )
+      );
 
-    return updatedRoom;
-  },
-  []
-);
+      return updatedRoom;
+    },
+    []
+  );
 
+  const leaveGroup = useCallback(
+    async (roomId) => {
+      await chatRoomsService.leaveGroup(roomId);
 
-const leaveGroup = useCallback(
-  async (roomId) => {
-    await chatRoomsService.leaveGroup(roomId);
+      setRooms((previousRooms) =>
+        previousRooms.filter((room) => room.id !== roomId)
+      );
 
-    setRooms((previousRooms) =>
-      previousRooms.filter((room) => room.id !== roomId)
-    );
+      if (roomId === activeRoomId) {
+        clearActiveRoom();
+      }
+    },
+    [activeRoomId, clearActiveRoom]
+  );
 
-    if (roomId === activeRoomId) {
-      clearActiveRoom();
-    }
-  },
-  [activeRoomId, clearActiveRoom]
-);
+  const removeMember = useCallback(
+    async (roomId, userId) => {
+      const updatedRoom = await chatRoomsService.removeMember(roomId, userId);
 
-const removeMember = useCallback(
-  async (roomId, userId) => {
-    const updatedRoom = await chatRoomsService.removeMember(roomId, userId);
+      setRooms((previousRooms) =>
+        previousRooms.map((room) =>
+          room.id === roomId ? { ...room, ...updatedRoom } : room
+        )
+      );
 
-    setRooms((previousRooms) =>
-      previousRooms.map((room) =>
-        room.id === roomId ? { ...room, ...updatedRoom } : room
-      )
-    );
-
-    return updatedRoom;
-  },
-  []
-);
+      return updatedRoom;
+    },
+    []
+  );
 
   // =========================
   // CONTEXT VALUE
   // =========================
 
- const value = useMemo(
+  const value = useMemo(
     () => ({
       // Rooms
       rooms,
@@ -662,8 +741,13 @@ const removeMember = useCallback(
       // WebSocket
       connectionStatus,
 
+      // Group membership
       leaveGroup,
-      removeMember
+      removeMember,
+
+      // Notifications
+      toasts,
+      dismissToast,
     }),
     [
       rooms,
@@ -699,7 +783,9 @@ const removeMember = useCallback(
       connectionStatus,
 
       leaveGroup,
-      removeMember
+      removeMember,
+
+      toasts,
     ]
   );
 

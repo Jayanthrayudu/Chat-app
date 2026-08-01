@@ -443,5 +443,17 @@ public class ChatService {
 
         return buildChatRoomResponse(savedRoom);
     }
+
+    public List<String> getOtherParticipantUsernames(String roomId, String excludeUsername) {
+    UUID id = UUID.fromString(roomId);
+
+    ChatRoom chatRoom = chatRoomRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Chat room not found"));
+
+    return chatRoom.getParticipants().stream()
+            .map(participant -> participant.getUser().getUsername())
+            .filter(username -> !username.equals(excludeUsername))
+            .toList();
+}
     
 }

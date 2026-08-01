@@ -3,6 +3,7 @@ import Header from "../layout/Header";
 import Sidebar from "../layout/Sidebar";
 import ConversationList from "./ConversationList";
 import ChatWindow from "./ChatWindow";
+import ToastContainer from "../common/Toast";
 import { useChat } from "../../hooks/useChat";
 import { ChatProvider } from "../../context/ChatContext";
 
@@ -24,6 +25,7 @@ export default function ChatLayout() {
 
   return (
     <div className="flex h-screen flex-col bg-ink-950">
+      <ToastContainer />
       <Header />
       <div className="flex min-h-0 flex-1">
         <aside
