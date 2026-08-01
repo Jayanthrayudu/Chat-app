@@ -7,6 +7,8 @@ public class MessageResponse {
 
     private UUID id;
 
+    private UUID chatRoomId;
+
     private UUID senderId;
 
     private String senderUsername;
@@ -21,6 +23,7 @@ public class MessageResponse {
 
     public MessageResponse(
             UUID id,
+            UUID chatRoomId,
             UUID senderId,
             String senderUsername,
             String content,
@@ -29,6 +32,7 @@ public class MessageResponse {
             LocalDateTime createdAt
     ) {
         this.id = id;
+        this.chatRoomId = chatRoomId;
         this.senderId = senderId;
         this.senderUsername = senderUsername;
         this.content = content;
@@ -39,6 +43,10 @@ public class MessageResponse {
 
     public UUID getId() {
         return id;
+    }
+
+    public UUID getChatRoomId() {
+        return chatRoomId;
     }
 
     public UUID getSenderId() {
@@ -67,6 +75,10 @@ public class MessageResponse {
 
     public void setId(UUID id) {
         this.id = id;
+    }
+
+    public void setChatRoomId(UUID chatRoomId) {
+        this.chatRoomId = chatRoomId;
     }
 
     public void setSenderId(UUID senderId) {

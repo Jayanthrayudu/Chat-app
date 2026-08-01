@@ -10,6 +10,7 @@ public class MessageMapper {
     public MessageResponse toResponse(Message message) {
         return new MessageResponse(
                 message.getId(),
+                message.getChatRoom().getId(),
                 message.getSender().getId(),
                 message.getSender().getUsername(),
                 message.getContent(),
