@@ -444,7 +444,8 @@ public class ChatService {
         return buildChatRoomResponse(savedRoom);
     }
 
-    public List<String> getOtherParticipantUsernames(String roomId, String excludeUsername) {
+@Transactional(readOnly = true)
+public List<String> getOtherParticipantUsernames(String roomId, String excludeUsername) {
     UUID id = UUID.fromString(roomId);
 
     ChatRoom chatRoom = chatRoomRepository.findById(id)
